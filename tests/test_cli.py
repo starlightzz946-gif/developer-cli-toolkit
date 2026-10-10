@@ -35,7 +35,14 @@ class TestDevtoolCLI(unittest.TestCase):
         result = run_cli("--help")
         self.assertEqual(result.returncode, 0)
         self.assertIn("system", result.stdout)
+ 
+    def test_doctor_command(self):
+        result = run_cli("doctor")
 
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("Python version:", result.stdout)
+        self.assertIn("git version", result.stdout)
+        self.assertIn("Free disk space:", result.stdout)
 
 if __name__ == "__main__":
     unittest.main()

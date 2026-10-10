@@ -44,6 +44,21 @@ Display the version:
 devtool --version
 ```
 
+
+### Check your development environment
+
+```bash
+devtool doctor
+```
+
+Checks:
+- Python version compatibility (Python 3.10 or newer)
+- Git availability and version
+- Available disk space
+
+The command reports a PASS or WARN status for each diagnostic.
+
+
 Display system information:
 
 ```bash
