@@ -39,6 +39,17 @@ def main():
     "doctor",
     help="Check the development environment",
     )
+    files_parser = subparsers.add_parser(
+    "files",
+    help="List files recursively in a directory",
+    )
+
+    files_parser.add_argument(
+    "directory",
+    nargs="?",
+    default=".",
+    help="Directory to search (default: current directory)",
+    )
 
     args = parser.parse_args()
 
@@ -50,6 +61,8 @@ def main():
         check_disk_space()
     elif args.command is None:
         parser.print_help()
+    elif args.command == "files":
+        find_files(args.directory)
 
 
 def check_python():
@@ -96,6 +109,39 @@ def check_disk_space():
         print("PASS: At least 2 GiB of disk space is available.")
     else:
         print("WARN: Less than 2 GiB of disk space is available.")
+
+
+
+def find_files(directory):
+    """Find project files while skipping generated directories."""
+    root = Path(directory)
+
+    if not root.exists():
+        print(f"Error: '{directory}' does not exist.")
+        return
+
+    if not root.is_dir():
+        print(f"Error: '{directory}' is not a directory.")
+        return
+
+    ignored_dirs = {
+        ".git",
+        ".venv",
+        "__pycache__",
+        "*.egg-info",
+    }
+
+    for current_dir, dir_names, file_names in root.walk():
+        dir_names[:] = [
+            name
+            for name in dir_names
+            if name not in ignored_dirs
+            and not name.endswith(".egg-info")
+        ]
+
+        for file_name in file_names:
+            print(current_dir / file_name)
+
 
 if __name__ == "__main__":
     main()

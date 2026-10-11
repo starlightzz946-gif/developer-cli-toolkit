@@ -1,4 +1,4 @@
-
+import tempfile
 import subprocess
 import sys
 import unittest
@@ -43,6 +43,45 @@ class TestDevtoolCLI(unittest.TestCase):
         self.assertIn("Python version:", result.stdout)
         self.assertIn("git version", result.stdout)
         self.assertIn("Free disk space:", result.stdout)
+
+    
+    def test_files_command(self):
+        result = run_cli("files", str(PROJECT_ROOT))
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("README.md", result.stdout)
+        self.assertIn("pyproject.toml", result.stdout)
+
+    def test_files_ignores_generated_directories(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            (root / "README.md").write_text("Project readme")
+            (root / ".venv").mkdir()
+            (root / ".venv" / "generated.txt").write_text("Generated")
+            (root / ".git").mkdir()
+            (root / ".git" / "internal.txt").write_text("Git data")
+            (root / "package.egg-info").mkdir()
+            (root / "package.egg-info" / "metadata.txt").write_text("Metadata")
+
+            result = run_cli("files", str(root))
+
+            self.assertIn("README.md", result.stdout)
+            self.assertNotIn("generated.txt", result.stdout)
+            self.assertNotIn("internal.txt", result.stdout)
+            self.assertNotIn("metadata.txt", result.stdout)
+
+    def test_files_nonexistent_directory(self):
+        result = run_cli("files", "/path/that/does/not/exist")
+
+        self.assertIn("does not exist", result.stdout)
+
+    def test_files_path_is_not_directory(self):
+        with tempfile.NamedTemporaryFile() as temp_file:
+            result = run_cli("files", temp_file.name)
+
+            self.assertIn("is not a directory", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

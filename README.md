@@ -59,6 +59,23 @@ Checks:
 The command reports a PASS or WARN status for each diagnostic.
 
 
+### List files in a directory
+
+List files recursively in the current directory:
+
+```bash
+devtool files
+```
+
+Search a specific directory:
+
+```bash
+devtool files ./src
+```
+
+The command skips generated directories such as `.git`, `.venv`, `__pycache__`, and `*.egg-info`.
+
+
 Display system information:
 
 ```bash
