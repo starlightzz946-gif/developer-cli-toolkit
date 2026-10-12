@@ -15,6 +15,14 @@ def show_system_info():
     print(f"Python version: {platform.python_version()}")
 
 
+
+def doctor_exit_code(checks_passed):
+    """Return success only when all required checks pass."""
+    return 0 if all(checks_passed) else 1
+
+
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="devtool",
@@ -62,15 +70,20 @@ def main():
     if args.command == "system":
         show_system_info()
     elif args.command == "doctor":
-        check_python()
-        check_git()
-        check_disk_space()
+        checks_passed = [
+            check_python(),
+            check_git(),
+            check_disk_space(),
+        ]
+
+        return doctor_exit_code(checks_passed)
     elif args.command is None:
         parser.print_help()
     elif args.command == "files":
         find_files(args.directory)
     elif args.command == "git":
         show_git_status()
+
 
 
 def check_python():
@@ -81,17 +94,19 @@ def check_python():
 
     if version >= (3, 10):
         print("PASS: Python 3.10 or newer is installed.")
-    else:
-        print("WARN: Python 3.10 or newer is required.")
+        return True
+
+    print("FAIL: Python 3.10 or newer is required.")
+    return False
+
+
 
 
 def check_git():
     """Check whether Git is installed and available."""
-    git_path = shutil.which("git")
-
-    if git_path is None:
-        print("WARN: Git was not found on PATH.")
-        return
+    if shutil.which("git") is None:
+        print("FAIL: Git was not found on PATH.")
+        return False
 
     result = subprocess.run(
         ["git", "--version"],
@@ -102,8 +117,12 @@ def check_git():
 
     if result.returncode == 0:
         print(f"PASS: {result.stdout.strip()}")
-    else:
-        print("WARN: Git was found, but its version check failed.")
+        return True
+
+    print("FAIL: Git was found, but its version check failed.")
+    return False
+
+
 
 
 def check_disk_space():
@@ -117,6 +136,10 @@ def check_disk_space():
         print("PASS: At least 2 GiB of disk space is available.")
     else:
         print("WARN: Less than 2 GiB of disk space is available.")
+
+    # Low disk space is a warning, not a hard failure.
+    return True
+
 
 
 def show_git_status():
@@ -149,23 +172,16 @@ def show_git_status():
         branch_info = branch_line[3:]
     else:
         branch_info = branch_line
-
     branch = branch_info.split("...", 1)[0]
-
     print(f"Branch: {branch}")
-
     if len(lines) == 1:
         print("Working tree: clean")
     else:
         print("Working tree: changes detected")
 
-
-
-
 def find_files(directory):
     """Find project files while skipping generated directories."""
     root = Path(directory)
-
     if not root.exists():
         print(f"Error: '{directory}' does not exist.")
         return
@@ -194,4 +210,4 @@ def find_files(directory):
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

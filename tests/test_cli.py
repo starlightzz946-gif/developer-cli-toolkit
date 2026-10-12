@@ -4,6 +4,8 @@ import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from devtool.cli import doctor_exit_code
+from devtool import cli
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CLI_FILE = PROJECT_ROOT / "src" / "devtool" / "cli.py"
@@ -35,7 +37,7 @@ class TestDevtoolCLI(unittest.TestCase):
         result = run_cli("--help")
         self.assertEqual(result.returncode, 0)
         self.assertIn("system", result.stdout)
- 
+
     def test_doctor_command(self):
         result = run_cli("doctor")
 
@@ -44,7 +46,7 @@ class TestDevtoolCLI(unittest.TestCase):
         self.assertIn("git version", result.stdout)
         self.assertIn("Free disk space:", result.stdout)
 
-    
+
     def test_files_command(self):
         result = run_cli("files", str(PROJECT_ROOT))
 
@@ -82,7 +84,7 @@ class TestDevtoolCLI(unittest.TestCase):
 
             self.assertIn("is not a directory", result.stdout)
 
-    
+
     def test_git_command_clean_repository(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -155,7 +157,7 @@ class TestDevtoolCLI(unittest.TestCase):
 
             self.assertIn("Error:", result.stdout)
             self.assertIn("not a git repository", result.stdout.lower())
-    
+
     @patch("devtool.cli.shutil.which", return_value=None)
     def test_git_command_git_not_available(self, mock_which):
         from devtool.cli import show_git_status
@@ -172,6 +174,27 @@ class TestDevtoolCLI(unittest.TestCase):
             output.getvalue(),
         )
         mock_which.assert_called_once_with("git")
+
+    @patch("devtool.cli.check_python", return_value=False)
+    @patch("devtool.cli.check_git", return_value=True)
+    @patch("devtool.cli.check_disk_space", return_value=True)
+    @patch("sys.argv", ["devtool", "doctor"])
+    def test_doctor_returns_failure_when_required_check_fails(
+        self, mock_disk, mock_git, mock_python
+    ):
+        result = cli.main()
+        self.assertEqual(result, 1)
+
+    def test_doctor_exit_code_all_checks_pass(self):
+        self.assertEqual(doctor_exit_code([True, True, True]), 0)
+
+    def test_doctor_exit_code_required_check_fails(self):
+        self.assertEqual(doctor_exit_code([True, False, True]), 1)
+
+    def test_doctor_exit_code_multiple_checks_fail(self):
+        self.assertEqual(doctor_exit_code([False, False, True]), 1)
+
+
 
 
 
