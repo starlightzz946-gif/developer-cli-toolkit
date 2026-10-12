@@ -44,43 +44,32 @@ Display the version:
 devtool --version
 ```
 
-
-### Check your development environment
-
-```bash
-devtool doctor
-```
-
-Checks:
-- Python version compatibility (Python 3.10 or newer)
-- Git availability and version
-- Available disk space
-
-The command reports a PASS or WARN status for each diagnostic.
-
-
-### List files in a directory
-
-List files recursively in the current directory:
-
-```bash
-devtool files
-```
-
-Search a specific directory:
-
-```bash
-devtool files ./src
-```
-
-The command skips generated directories such as `.git`, `.venv`, `__pycache__`, and `*.egg-info`.
-
-
 Display system information:
 
 ```bash
 devtool system
 ```
+
+
+### Check Git repository status
+
+Display the current branch and whether the working tree is clean:
+
+```bash
+devtool git
+```
+
+Example output:
+
+```text
+Branch: main
+Working tree: clean
+```
+
+If there are modified or untracked files, the command reports that changes were detected.
+
+The command also reports an error if Git is unavailable or the current directory is not inside a Git repository.
+
 
 Display help:
 

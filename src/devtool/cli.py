@@ -4,6 +4,7 @@ import platform
 import sys
 import shutil
 import subprocess
+import os
 
 
 def show_system_info():
@@ -44,6 +45,11 @@ def main():
     help="List files recursively in a directory",
     )
 
+    subparsers.add_parser(
+    "git",
+    help="Display Git branch and working-tree status",
+)
+
     files_parser.add_argument(
     "directory",
     nargs="?",
@@ -63,6 +69,8 @@ def main():
         parser.print_help()
     elif args.command == "files":
         find_files(args.directory)
+    elif args.command == "git":
+        show_git_status()
 
 
 def check_python():
@@ -109,6 +117,48 @@ def check_disk_space():
         print("PASS: At least 2 GiB of disk space is available.")
     else:
         print("WARN: Less than 2 GiB of disk space is available.")
+
+
+def show_git_status():
+    """Display the current Git branch and working-tree status."""
+    if shutil.which("git") is None:
+        print("Error: Git is not installed or not available on PATH.")
+        return
+
+    result = subprocess.run(
+        ["git", "status", "--short", "--branch"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        error = result.stderr.strip()
+        print(f"Error: Unable to read Git status. {error}")
+        return
+
+    lines = result.stdout.splitlines()
+
+    if not lines:
+        print("Error: Git returned no status information.")
+        return
+
+    branch_line = lines[0]
+
+    if branch_line.startswith("## "):
+        branch_info = branch_line[3:]
+    else:
+        branch_info = branch_line
+
+    branch = branch_info.split("...", 1)[0]
+
+    print(f"Branch: {branch}")
+
+    if len(lines) == 1:
+        print("Working tree: clean")
+    else:
+        print("Working tree: changes detected")
+
 
 
 
