@@ -3,9 +3,12 @@
 A lightweight command-line toolkit for developers, built with Python.
 
 ## Features
-
 - Display application version and help.
 - Inspect operating system, release, architecture, and Python version.
+- Check Python version, Git availability, and available disk space.
+- List files recursively while excluding common generated directories.
+- Inspect Git branch and working-tree status.
+- Return meaningful exit codes from environment checks.
 - Automated tests using Python's built-in `unittest` framework.
 - Installable CLI command through Python packaging.
 
@@ -69,6 +72,47 @@ Working tree: clean
 If there are modified or untracked files, the command reports that changes were detected.
 
 The command also reports an error if Git is unavailable or the current directory is not inside a Git repository.
+
+### List files
+
+List files recursively in the current directory:
+
+```bash
+devtool files
+```
+
+Specify a directory:
+
+```bash
+devtool files ./src
+```
+
+The command excludes common generated directories, including `.git`, `.venv`, `__pycache__`, and package metadata directories.
+
+### Check your development environment
+
+Run the environment checks:
+
+```bash
+devtool doctor
+```
+
+The command checks:
+
+- Whether Python 3.10 or newer is installed.
+- Whether Git is available and its version can be retrieved.
+- Whether at least 2 GiB of disk space is available.
+
+Low disk space produces a warning rather than failing the command.
+
+**Exit codes**
+
+| Exit code | Meaning |
+|---|---|
+| `0` | All required checks passed. |
+| `1` | At least one required check failed. |
+
+These exit codes allow shell scripts and other automation to determine whether the environment checks succeeded.
 
 
 Display help:
