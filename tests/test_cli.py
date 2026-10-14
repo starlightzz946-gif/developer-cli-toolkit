@@ -6,6 +6,9 @@ from pathlib import Path
 from unittest.mock import patch
 from devtool.cli import doctor_exit_code
 from devtool import cli
+import socket
+from contextlib import redirect_stdout
+from io import StringIO
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CLI_FILE = PROJECT_ROOT / "src" / "devtool" / "cli.py"
@@ -193,6 +196,37 @@ class TestDevtoolCLI(unittest.TestCase):
 
     def test_doctor_exit_code_multiple_checks_fail(self):
         self.assertEqual(doctor_exit_code([False, False, True]), 1)
+
+    @patch(
+    "devtool.cli.socket.getaddrinfo",
+    return_value=[
+        (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.10", 0)),
+        (socket.AF_INET, socket.SOCK_DGRAM, 17, "", ("192.0.2.10", 0)),
+        (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.20", 0)),
+    ],
+    )
+    def test_network_command_deduplicates_addresses(self, mock_dns):
+        output = StringIO()
+
+        with redirect_stdout(output):
+            result = cli.resolve_hostname("example.test")
+
+        self.assertEqual(result, 0)
+        self.assertIn("192.0.2.10", output.getvalue())
+        self.assertIn("192.0.2.20", output.getvalue())
+        self.assertEqual(output.getvalue().count("192.0.2.10"), 1)
+        mock_dns.assert_called_once_with("example.test", None)
+
+
+    @patch(
+       "devtool.cli.socket.getaddrinfo",
+       side_effect=socket.gaierror("Name resolution failed"),
+    )
+    def test_network_command_handles_dns_failure(self, mock_dns):
+       result = cli.resolve_hostname("invalid.example")
+
+       self.assertEqual(result, 1)
+       mock_dns.assert_called_once_with("invalid.example", None)
 
 
 

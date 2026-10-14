@@ -5,6 +5,7 @@ import sys
 import shutil
 import subprocess
 import os
+import socket
 
 
 def show_system_info():
@@ -15,12 +16,34 @@ def show_system_info():
     print(f"Python version: {platform.python_version()}")
 
 
-
 def doctor_exit_code(checks_passed):
     """Return success only when all required checks pass."""
     return 0 if all(checks_passed) else 1
 
+def resolve_hostname(hostname):
+    """Resolve a hostname and display its unique IP addresses."""
+    try:
+        results = socket.getaddrinfo(hostname, None)
+    except socket.gaierror as error:
+        print(f"DNS lookup failed for {hostname}: {error}")
+        return 1
 
+    addresses = sorted({
+        result[4][0]
+        for result in results
+    })
+
+    if not addresses:
+        print(f"No IP addresses found for {hostname}.")
+        return 1
+
+    print(f"Hostname: {hostname}")
+    print("IP addresses:")
+
+    for address in addresses:
+        print(f"- {address}")
+
+    return 0
 
 
 def main():
@@ -56,7 +79,17 @@ def main():
     subparsers.add_parser(
     "git",
     help="Display Git branch and working-tree status",
-)
+    )
+
+    network_parser = subparsers.add_parser(
+        "network",
+        help="Resolve a hostname to IP addresses",
+    )
+
+    network_parser.add_argument(
+        "hostname",
+        help="Hostname to resolve",
+    )
 
     files_parser.add_argument(
     "directory",
@@ -83,6 +116,8 @@ def main():
         find_files(args.directory)
     elif args.command == "git":
         show_git_status()
+    elif args.command == "network":
+        return resolve_hostname(args.hostname)
 
 
 

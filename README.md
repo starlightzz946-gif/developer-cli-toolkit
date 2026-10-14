@@ -73,6 +73,25 @@ If there are modified or untracked files, the command reports that changes were 
 
 The command also reports an error if Git is unavailable or the current directory is not inside a Git repository.
 
+### Resolve a hostname
+
+Look up IP addresses associated with a hostname:
+
+```bash
+devtool network example.com
+```
+
+The command displays the unique IP addresses returned by the system's name-resolution service. A hostname may resolve to multiple IPv4 or IPv6 addresses.
+
+If name resolution fails, the command displays an error and returns exit code `1`.
+
+**Exit codes**
+
+- `0` — hostname resolution succeeded.
+- `1` — hostname resolution failed or returned no addresses.
+
+Successful DNS resolution does not guarantee that a website is reachable or accepting connections.
+
 ### List files
 
 List files recursively in the current directory:
