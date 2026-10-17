@@ -229,6 +229,31 @@ class TestDevtoolCLI(unittest.TestCase):
        mock_dns.assert_called_once_with("invalid.example", None)
 
 
+    @patch("devtool.cli.socket.create_connection")
+    def test_tcp_connection_success(self, mock_connect):
+        result = cli.check_tcp_connection("example.com", 443)
+
+        self.assertEqual(result, 0)
+        mock_connect.assert_called_once_with(
+            ("example.com", 443),
+            timeout=3,
+        )
+
+    @patch(
+        "devtool.cli.socket.create_connection",
+        side_effect=OSError("Connection refused"),
+    )
+    def test_tcp_connection_failure(self, mock_connect):
+        output = StringIO()
+
+        with redirect_stdout(output):
+            result = cli.check_tcp_connection("example.com", 443)
+
+        self.assertEqual(result, 1)
+        self.assertIn("failed", output.getvalue())
+
+
+
 
 
 

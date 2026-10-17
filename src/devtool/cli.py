@@ -20,6 +20,7 @@ def doctor_exit_code(checks_passed):
     """Return success only when all required checks pass."""
     return 0 if all(checks_passed) else 1
 
+
 def resolve_hostname(hostname):
     """Resolve a hostname and display its unique IP addresses."""
     try:
@@ -44,6 +45,20 @@ def resolve_hostname(hostname):
         print(f"- {address}")
 
     return 0
+
+
+def check_tcp_connection(hostname, port, timeout=3):
+    """Check whether a TCP connection can be established."""
+    try:
+        with socket.create_connection(
+            (hostname, port),
+            timeout=timeout,
+        ):
+            print(f"TCP connection to {hostname}:{port} succeeded.")
+            return 0
+    except (socket.gaierror, OSError, TimeoutError) as error:
+        print(f"TCP connection to {hostname}:{port} failed: {error}")
+        return 1
 
 
 def main():
@@ -81,15 +96,30 @@ def main():
     help="Display Git branch and working-tree status",
     )
 
+
     network_parser = subparsers.add_parser(
         "network",
-        help="Resolve a hostname to IP addresses",
+        help="Resolve a hostname to IP addresses or check connectivity",
     )
 
     network_parser.add_argument(
         "hostname",
-        help="Hostname to resolve",
+        help="Hostname to resolve or check",
     )
+
+    network_parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check TCP connectivity to the hostname",
+    )
+
+    network_parser.add_argument(
+        "--port",
+        type=int,
+        default=443,
+        help="TCP port to check (default: 443)",
+    )
+
 
     files_parser.add_argument(
     "directory",
@@ -117,6 +147,9 @@ def main():
     elif args.command == "git":
         show_git_status()
     elif args.command == "network":
+        if args.check:
+            return check_tcp_connection(args.hostname, args.port)
+
         return resolve_hostname(args.hostname)
 
 

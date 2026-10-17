@@ -92,6 +92,31 @@ If name resolution fails, the command displays an error and returns exit code `1
 
 Successful DNS resolution does not guarantee that a website is reachable or accepting connections.
 
+### Check TCP connectivity
+
+Test whether a TCP connection can be established to a hostname and port.
+
+Check the default HTTPS port (443):
+
+```bash
+devtool network --check example.com
+```
+
+Check a specific port:
+
+```bash
+devtool network --check --port 80 example.com
+```
+
+The `--check` option attempts to establish a TCP connection. The `--port` option selects the destination port and defaults to `443`.
+
+**Exit codes**
+
+- `0` — TCP connection established successfully.
+- `1` — connection attempt failed.
+
+The connection attempt uses a three-second timeout by default. A successful connection does not guarantee that the application or website is functioning correctly.
+
 ### List files
 
 List files recursively in the current directory:
