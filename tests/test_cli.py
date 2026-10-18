@@ -9,6 +9,7 @@ from devtool import cli
 import socket
 from contextlib import redirect_stdout
 from io import StringIO
+from devtool import cli
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CLI_FILE = PROJECT_ROOT / "src" / "devtool" / "cli.py"
@@ -253,7 +254,89 @@ class TestDevtoolCLI(unittest.TestCase):
         self.assertIn("failed", output.getvalue())
 
 
+    def test_parse_single_port(self):
+        self.assertEqual(cli.parse_port_range("22"), [22])
 
+    def test_parse_port_range(self):
+        self.assertEqual(
+            cli.parse_port_range("20-23"),
+            [20, 21, 22, 23],
+        )
+
+    def test_parse_port_range_with_whitespace(self):
+        self.assertEqual(
+            cli.parse_port_range(" 20-23 "),
+            [20, 21, 22, 23],
+        )
+
+    def test_parse_invalid_port_text(self):
+        with self.assertRaises(ValueError):
+            cli.parse_port_range("hello")
+
+    def test_parse_port_zero(self):
+        with self.assertRaises(ValueError):
+            cli.parse_port_range("0")
+
+    def test_parse_port_above_maximum(self):
+        with self.assertRaises(ValueError):
+            cli.parse_port_range("65536")
+
+    def test_parse_reversed_port_range(self):
+        with self.assertRaises(ValueError):
+            cli.parse_port_range("80-20")
+
+    def test_parse_malformed_port_range(self):
+        with self.assertRaises(ValueError):
+            cli.parse_port_range("20-23-25")
+
+    @patch("devtool.cli.socket.create_connection")
+    def test_tcp_port_open(self, mock_connect):
+        self.assertTrue(cli.is_tcp_port_open("127.0.0.1", 22))
+        mock_connect.assert_called_once_with(
+            ("127.0.0.1", 22),
+            timeout=0.5,
+        )
+
+    @patch(
+        "devtool.cli.socket.create_connection",
+        side_effect=OSError("Connection refused"),
+    )
+    def test_tcp_port_not_open(self, mock_connect):
+        self.assertFalse(cli.is_tcp_port_open("127.0.0.1", 22))
+
+
+    @patch("devtool.cli.is_tcp_port_open")
+    def test_scan_ports_reports_open_ports(self, mock_is_open):
+        mock_is_open.side_effect = [False, True, False]
+
+        output = StringIO()
+        with redirect_stdout(output):
+            result = cli.scan_ports("127.0.0.1", "20-22")
+
+        self.assertEqual(result, 0)
+        self.assertIn("Port 21: OPEN", output.getvalue())
+        self.assertNotIn("Port 20: OPEN", output.getvalue())
+        self.assertNotIn("Port 22: OPEN", output.getvalue())
+        self.assertIn("Found 1 open port(s)", output.getvalue())
+
+    @patch("devtool.cli.is_tcp_port_open")
+    def test_scan_ports_rejects_invalid_range(self, mock_is_open):
+        output = StringIO()
+        with redirect_stdout(output):
+            result = cli.scan_ports("127.0.0.1", "hello")
+
+        self.assertEqual(result, 1)
+        self.assertIn("Invalid port range", output.getvalue())
+        mock_is_open.assert_not_called()
+
+
+    @patch("devtool.cli.scan_ports", return_value=0)
+    @patch("sys.argv", ["devtool", "scan", "127.0.0.1", "--ports", "22"])
+    def test_scan_command_dispatches(self, mock_scan):
+        result = cli.main()
+
+        self.assertEqual(result, 0)
+        mock_scan.assert_called_once_with("127.0.0.1", "22")
 
 
 

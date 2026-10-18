@@ -117,6 +117,26 @@ The `--check` option attempts to establish a TCP connection. The `--port` option
 
 The connection attempt uses a three-second timeout by default. A successful connection does not guarantee that the application or website is functioning correctly.
 
+### TCP Port Scanner
+
+Scan a specific TCP port or a small range of ports on a host you own or have permission to test.
+
+```bash
+# Scan one port
+devtool scan 127.0.0.1 --ports 22
+
+# Scan a small range of ports
+devtool scan 127.0.0.1 --ports 20-23
+
+# Scan the default range (ports 1-1024)
+devtool scan 127.0.0.1
+```
+
+The scanner reports ports where a TCP connection succeeds. A port that is not reported as open is not necessarily confirmed closed; a connection may fail for several reasons.
+
+**Use responsibly:** Only scan systems you own or are explicitly authorized to test.
+
+
 ### List files
 
 List files recursively in the current directory:

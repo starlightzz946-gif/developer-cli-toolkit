@@ -61,6 +61,76 @@ def check_tcp_connection(hostname, port, timeout=3):
         return 1
 
 
+def parse_port_range(port_spec):
+    """Parse and validate a single TCP port or a port range."""
+    port_spec = port_spec.strip()
+
+    if not port_spec:
+        raise ValueError("Port specification cannot be empty.")
+
+    if "-" in port_spec:
+        parts = port_spec.split("-")
+
+        if len(parts) != 2:
+            raise ValueError("Use a port like 22 or a range like 20-23.")
+
+        start_text, end_text = parts
+    else:
+        start_text = end_text = port_spec
+
+    try:
+        start_port = int(start_text)
+        end_port = int(end_text)
+    except ValueError:
+        raise ValueError(
+            "Ports must be integers, like 22 or 20-23."
+        ) from None
+
+    if not (1 <= start_port <= 65535):
+        raise ValueError("Ports must be between 1 and 65535.")
+
+    if not (1 <= end_port <= 65535):
+        raise ValueError("Ports must be between 1 and 65535.")
+
+    if start_port > end_port:
+        raise ValueError("The starting port cannot exceed the ending port.")
+
+    return list(range(start_port, end_port + 1))
+
+
+def is_tcp_port_open(hostname, port, timeout=0.5):
+    """Return True if a TCP connection to the port succeeds."""
+    try:
+        with socket.create_connection(
+            (hostname, port),
+            timeout=timeout,
+        ):
+            return True
+    except OSError:
+        return False
+
+
+def scan_ports(hostname, port_spec):
+    """Scan a specified TCP port or range on a host."""
+    try:
+        ports = parse_port_range(port_spec)
+    except ValueError as error:
+        print(f"Invalid port range: {error}")
+        return 1
+
+    print(f"Scanning {hostname}...")
+
+    open_ports = []
+
+    for port in ports:
+        if is_tcp_port_open(hostname, port):
+            print(f"Port {port}: OPEN")
+            open_ports.append(port)
+
+    print(f"Scan complete. Found {len(open_ports)} open port(s).")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="devtool",
@@ -95,6 +165,23 @@ def main():
     "git",
     help="Display Git branch and working-tree status",
     )
+
+    scan_parser = subparsers.add_parser(
+        "scan",
+        help="Scan TCP ports on an authorized host",
+    )
+
+    scan_parser.add_argument(
+        "hostname",
+        help="Hostname or IP address to scan",
+    )
+
+    scan_parser.add_argument(
+        "--ports",
+        default="1-1024",
+        help="Port or port range to scan (default: 1-1024)",
+    )
+
 
 
     network_parser = subparsers.add_parser(
@@ -151,6 +238,8 @@ def main():
             return check_tcp_connection(args.hostname, args.port)
 
         return resolve_hostname(args.hostname)
+    elif args.command == "scan":
+        return scan_ports(args.hostname, args.ports)
 
 
 
