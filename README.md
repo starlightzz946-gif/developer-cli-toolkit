@@ -136,6 +136,7 @@ The scanner reports ports where a TCP connection succeeds. A port that is not re
 
 **Use responsibly:** Only scan systems you own or are explicitly authorized to test.
 
+The scanner displays a common service name alongside each open port, such as `SSH` for port 22 or `HTTPS` for port 443. These names are conventional associations, not confirmation of the software actually running on the port. Ports without a listed association are displayed as `Unknown`.
 
 ### List files
 

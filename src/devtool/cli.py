@@ -109,6 +109,19 @@ def is_tcp_port_open(hostname, port, timeout=0.5):
     except OSError:
         return False
 
+def get_service_name(port):
+    """Return the common service name for a TCP port."""
+
+    services = {
+        22: "SSH",
+        53: "DNS",
+        80: "HTTP",
+        443: "HTTPS",
+        3306: "MySQL",
+    }
+
+    return services.get(port, "Unknown")
+
 
 def scan_ports(hostname, port_spec):
     """Scan a specified TCP port or range on a host."""
@@ -124,7 +137,7 @@ def scan_ports(hostname, port_spec):
 
     for port in ports:
         if is_tcp_port_open(hostname, port):
-            print(f"Port {port}: OPEN")
+            print(f"Port {port}: OPEN ({get_service_name(port)})")
             open_ports.append(port)
 
     print(f"Scan complete. Found {len(open_ports)} open port(s).")

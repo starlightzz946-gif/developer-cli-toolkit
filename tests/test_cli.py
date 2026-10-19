@@ -338,7 +338,24 @@ class TestDevtoolCLI(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_scan.assert_called_once_with("127.0.0.1", "22")
 
+    def test_get_service_name_known_port(self):
+        self.assertEqual(cli.get_service_name(22), "SSH")
+        self.assertEqual(cli.get_service_name(80), "HTTP")
+        self.assertEqual(cli.get_service_name(443), "HTTPS")
 
+
+    def test_get_service_name_unknown_port(self):
+        self.assertEqual(cli.get_service_name(8080), "Unknown")
+
+    @patch("devtool.cli.is_tcp_port_open", return_value=True)
+    def test_scan_ports_displays_service_name(self, mock_is_open):
+        output = StringIO()
+
+        with redirect_stdout(output):
+            result = cli.scan_ports("127.0.0.1", "22")
+
+        self.assertEqual(result, 0)
+        self.assertIn("Port 22: OPEN (SSH)", output.getvalue())
 
 if __name__ == "__main__":
     unittest.main()
