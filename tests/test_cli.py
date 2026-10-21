@@ -9,7 +9,7 @@ from devtool import cli
 import socket
 from contextlib import redirect_stdout
 from io import StringIO
-from devtool import cli
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CLI_FILE = PROJECT_ROOT / "src" / "devtool" / "cli.py"
@@ -336,7 +336,12 @@ class TestDevtoolCLI(unittest.TestCase):
         result = cli.main()
 
         self.assertEqual(result, 0)
-        mock_scan.assert_called_once_with("127.0.0.1", "22")
+        mock_scan.assert_called_once_with(
+            "127.0.0.1",
+            "22",
+            None,
+            "json",
+        )
 
     def test_get_service_name_known_port(self):
         self.assertEqual(cli.get_service_name(22), "SSH")
@@ -346,6 +351,74 @@ class TestDevtoolCLI(unittest.TestCase):
 
     def test_get_service_name_unknown_port(self):
         self.assertEqual(cli.get_service_name(8080), "Unknown")
+
+    @patch("devtool.cli.is_tcp_port_open", return_value=True)
+    def test_scan_ports_saves_json_report(self, mock_is_open):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "scan.json"
+
+            with redirect_stdout(StringIO()):
+                result = cli.scan_ports(
+                    "127.0.0.1",
+                    "22",
+                    str(report_path),
+                    "json",
+                )
+
+            import json
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(result, 0)
+            self.assertEqual(report["hostname"], "127.0.0.1")
+            self.assertEqual(report["scanned_ports"], [22])
+            self.assertEqual(
+                report["open_ports"],
+                [{"port": 22, "service": "SSH"}],
+            )
+
+    @patch("devtool.cli.is_tcp_port_open", return_value=True)
+    def test_scan_ports_saves_text_report(self, mock_is_open):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "scan.txt"
+
+            with redirect_stdout(StringIO()):
+                result = cli.scan_ports(
+                    "127.0.0.1",
+                    "22",
+                    str(report_path),
+                    "text",
+                )
+
+            report = report_path.read_text(encoding="utf-8")
+
+            self.assertEqual(result, 0)
+            self.assertIn("Scan report for 127.0.0.1", report)
+            self.assertIn("Scanned ports: 22", report)
+            self.assertIn("Open ports: 1", report)
+            self.assertIn("Port 22: OPEN (SSH)", report)
+
+    @patch("devtool.cli.Path.write_text", side_effect=OSError("Permission denied"))
+    @patch("devtool.cli.is_tcp_port_open", return_value=False)
+    def test_scan_ports_handles_report_write_error(
+        self,
+        mock_is_open,
+        mock_write_text,
+    ):
+        output = StringIO()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "scan.json"
+
+            with redirect_stdout(output):
+                result = cli.scan_ports(
+                    "127.0.0.1",
+                    "22",
+                    str(report_path),
+                    "json",
+                )
+
+        self.assertEqual(result, 1)
+        self.assertIn("Could not save report", output.getvalue())
 
     @patch("devtool.cli.is_tcp_port_open", return_value=True)
     def test_scan_ports_displays_service_name(self, mock_is_open):

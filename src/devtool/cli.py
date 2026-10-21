@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import os
 import socket
+import json
 
 
 def show_system_info():
@@ -123,8 +124,9 @@ def get_service_name(port):
     return services.get(port, "Unknown")
 
 
-def scan_ports(hostname, port_spec):
-    """Scan a specified TCP port or range on a host."""
+
+def scan_ports(hostname, port_spec, output=None, report_format="json"):
+    """Scan TCP ports and optionally save a report."""
     try:
         ports = parse_port_range(port_spec)
     except ValueError as error:
@@ -137,11 +139,48 @@ def scan_ports(hostname, port_spec):
 
     for port in ports:
         if is_tcp_port_open(hostname, port):
-            print(f"Port {port}: OPEN ({get_service_name(port)})")
-            open_ports.append(port)
+            service = get_service_name(port)
+            print(f"Port {port}: OPEN ({service})")
+            open_ports.append({
+                "port": port,
+                "service": service,
+            })
+
+    results = {
+        "hostname": hostname,
+        "scanned_ports": ports,
+        "open_ports": open_ports,
+    }
+    if output:
+        try:
+            if report_format == "json":
+                report = json.dumps(results, indent=2)
+            else:
+                report_lines = [
+                    f"Scan report for {hostname}",
+                    f"Scanned ports: {', '.join(map(str, ports))}",
+                    f"Open ports: {len(open_ports)}",
+                    "",
+                ]
+
+                for item in open_ports:
+                    report_lines.append(
+                        f"Port {item['port']}: OPEN ({item['service']})"
+                    )
+
+                report = "\n".join(report_lines)
+
+            Path(output).write_text(report + "\n", encoding="utf-8")
+            print(f"Report saved to {output}")
+
+        except OSError as error:
+            print(f"Could not save report: {error}")
+            return 1
 
     print(f"Scan complete. Found {len(open_ports)} open port(s).")
+
     return 0
+
 
 
 def main():
@@ -195,6 +234,17 @@ def main():
         help="Port or port range to scan (default: 1-1024)",
     )
 
+    scan_parser.add_argument(
+        "--output",
+        help="Save scan results to a file",
+    )
+
+    scan_parser.add_argument(
+        "--format",
+        choices=["json", "text"],
+        default="json",
+        help="Report format: json or text (default: json)",
+    )
 
 
     network_parser = subparsers.add_parser(
@@ -252,7 +302,12 @@ def main():
 
         return resolve_hostname(args.hostname)
     elif args.command == "scan":
-        return scan_ports(args.hostname, args.ports)
+        return scan_ports(
+            args.hostname,
+            args.ports,
+            args.output,
+            args.format,
+        )
 
 
 
