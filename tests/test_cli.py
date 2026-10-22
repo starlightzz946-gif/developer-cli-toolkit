@@ -9,7 +9,7 @@ from devtool import cli
 import socket
 from contextlib import redirect_stdout
 from io import StringIO
-
+import csv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CLI_FILE = PROJECT_ROOT / "src" / "devtool" / "cli.py"
@@ -429,6 +429,71 @@ class TestDevtoolCLI(unittest.TestCase):
 
         self.assertEqual(result, 0)
         self.assertIn("Port 22: OPEN (SSH)", output.getvalue())
+
+    @patch("devtool.cli.is_tcp_port_open", side_effect=[True, False])
+    def test_scan_ports_saves_csv_report(self, mock_is_open):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "scan.csv"
+
+            with redirect_stdout(StringIO()):
+                result = cli.scan_ports(
+                    "127.0.0.1",
+                    "22-23",
+                    str(report_path),
+                    "csv",
+                )
+
+            with report_path.open(
+                newline="", encoding="utf-8"
+            ) as report_file:
+                rows = list(csv.reader(report_file))
+
+            self.assertEqual(result, 0)
+            self.assertEqual(
+                rows[0],
+                ["hostname", "port", "service", "status"],
+            )
+            self.assertEqual(
+                rows[1],
+                ["127.0.0.1", "22", "SSH", "OPEN"],
+            )
+            self.assertEqual(
+                rows[2],
+                ["127.0.0.1", "23", "Unknown", "CLOSED"],
+            )
+            mock_is_open.assert_called()
+            self.assertEqual(mock_is_open.call_count, 2)
+
+    @patch("devtool.cli.is_tcp_port_open", return_value=False)
+    def test_scan_ports_saves_csv_when_no_ports_are_open(
+        self, mock_is_open
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "scan.csv"
+
+            with redirect_stdout(StringIO()):
+                result = cli.scan_ports(
+                    "127.0.0.1",
+                    "22-23",
+                    str(report_path),
+                    "csv",
+                )
+
+            with report_path.open(
+                newline="", encoding="utf-8"
+            ) as report_file:
+                rows = list(csv.reader(report_file))
+
+            self.assertEqual(result, 0)
+            self.assertEqual(
+                rows[0],
+                ["hostname", "port", "service", "status"],
+            )
+            self.assertEqual(len(rows), 3)
+            self.assertEqual(rows[1][3], "CLOSED")
+            self.assertEqual(rows[2][3], "CLOSED")
+            self.assertEqual(mock_is_open.call_count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,8 @@ import subprocess
 import os
 import socket
 import json
+import csv
+import io
 
 
 def show_system_info():
@@ -155,6 +157,30 @@ def scan_ports(hostname, port_spec, output=None, report_format="json"):
         try:
             if report_format == "json":
                 report = json.dumps(results, indent=2)
+
+            elif report_format == "csv":
+                csv_buffer = io.StringIO(newline="")
+                writer = csv.writer(csv_buffer)
+
+                writer.writerow(["hostname", "port", "service", "status"])
+
+                open_port_lookup = {
+                    item["port"]: item["service"]
+                    for item in open_ports
+                }
+
+                for port in ports:
+                    if port in open_port_lookup:
+                        service = open_port_lookup[port]
+                        status = "OPEN"
+                    else:
+                        service = get_service_name(port)
+                        status = "CLOSED"
+
+                    writer.writerow([hostname, port, service, status])
+
+                report = csv_buffer.getvalue().rstrip("\n")
+
             else:
                 report_lines = [
                     f"Scan report for {hostname}",
@@ -241,9 +267,9 @@ def main():
 
     scan_parser.add_argument(
         "--format",
-        choices=["json", "text"],
+        choices=["json", "text", "csv"],
         default="json",
-        help="Report format: json or text (default: json)",
+        help="Report format: json, text, or csv (default: json)",
     )
 
 
